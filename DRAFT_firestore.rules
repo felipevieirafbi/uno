@@ -1,0 +1,557 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Core Primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidRoomCode(code) {
+      return code is string && code.size() == 6 && code.matches('^[A-Z0-9]{6}$');
+    }
+
+    function isValidAvatarColor(color) {
+      return color is string && color.size() <= 16 &&
+        color in ['red', 'blue', 'yellow', 'green', 'purple', 'orange'];
+    }
+
+    // Validation Blueprint: UserPublicProfile
+    function isValidUserPublicProfile(data, userId) {
+      return data.keys().hasAll(['uid', 'displayName', 'avatarColor', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['uid', 'displayName', 'avatarColor', 'createdAt', 'updatedAt']) &&
+        data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128 &&
+        data.uid == userId && data.uid == request.auth.uid &&
+        data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 40 &&
+        isValidAvatarColor(data.avatarColor) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    // Validation Blueprint: UserPrivateInfo (PII Isolated)
+    function isValidUserPrivateInfo(data, userId) {
+      return data.keys().hasAll(['uid', 'email', 'updatedAt']) &&
+        data.keys().hasOnly(['uid', 'email', 'updatedAt']) &&
+        data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128 &&
+        data.uid == userId && data.uid == request.auth.uid &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 254 &&
+        data.updatedAt is timestamp;
+    }
+
+    // Helper for lastTaunt map inside GameRoom
+    function isValidLastTaunt(taunt) {
+      return taunt is map &&
+        taunt.keys().hasAll(['id', 'stickerId', 'senderId', 'senderName', 'targetName', 'sentAtMs']) &&
+        taunt.keys().hasOnly([
+          'id',
+          'stickerId',
+          'senderId',
+          'senderName',
+          'targetName',
+          'sentAtMs',
+          'customTitle',
+          'customLine',
+          'customBadge',
+          'customColor',
+          'customArt',
+          'rarity',
+          'soundKind'
+        ]) &&
+        taunt.id is string && taunt.id.size() <= 64 &&
+        taunt.stickerId is string && taunt.stickerId.size() <= 40 &&
+        taunt.senderId is string && taunt.senderId.size() <= 128 &&
+        taunt.senderName is string && taunt.senderName.size() <= 40 &&
+        taunt.targetName is string && taunt.targetName.size() <= 40 &&
+        taunt.sentAtMs is int && taunt.sentAtMs >= 0 &&
+        (!('customTitle' in taunt) || (taunt.customTitle is string && taunt.customTitle.size() <= 32)) &&
+        (!('customLine' in taunt) || (taunt.customLine is string && taunt.customLine.size() <= 96)) &&
+        (!('customBadge' in taunt) || (taunt.customBadge is string && taunt.customBadge.size() <= 8)) &&
+        (!('customColor' in taunt) || (taunt.customColor is string && taunt.customColor.size() <= 12)) &&
+        (!('customArt' in taunt) || (taunt.customArt is string && taunt.customArt.size() <= 24)) &&
+        (!('rarity' in taunt) || (taunt.rarity is string && taunt.rarity.size() <= 16 && taunt.rarity in ['common', 'rare', 'epic', 'legendary'])) &&
+        (!('soundKind' in taunt) || (taunt.soundKind is string && taunt.soundKind.size() <= 16));
+    }
+
+    // Helper for Seat map inside statePayload
+    function isValidSeatSample(seat) {
+      return seat is map &&
+        seat.keys().hasAll([
+          'id',
+          'name',
+          'isBot',
+          'botStyle',
+          'avatarColor',
+          'score',
+          'saidUno',
+          'handCodes'
+        ]) &&
+        seat.keys().hasOnly([
+          'id',
+          'name',
+          'isBot',
+          'botStyle',
+          'avatarColor',
+          'score',
+          'saidUno',
+          'handCodes',
+          'eliminated',
+          'teamId',
+          'attackCardsPlayed',
+          'maxCardsHeld',
+          'caughtUnoCount'
+        ]) &&
+        seat.id is string && seat.id.size() >= 1 && seat.id.size() <= 128 &&
+        seat.name is string && seat.name.size() >= 1 && seat.name.size() <= 40 &&
+        seat.isBot is bool &&
+        seat.botStyle is string && seat.botStyle.size() <= 24 &&
+        isValidAvatarColor(seat.avatarColor) &&
+        seat.score is int && seat.score >= 0 && seat.score <= 999999 &&
+        seat.saidUno is bool &&
+        seat.handCodes is list && seat.handCodes.size() <= 120 &&
+        (seat.handCodes.size() == 0 || (seat.handCodes[0] is string && seat.handCodes[0].size() <= 24)) &&
+        (!('eliminated' in seat) || seat.eliminated is bool) &&
+        (!('teamId' in seat) || (seat.teamId is string && seat.teamId.size() <= 4)) &&
+        (!('attackCardsPlayed' in seat) || (seat.attackCardsPlayed is int && seat.attackCardsPlayed >= 0 && seat.attackCardsPlayed <= 999)) &&
+        (!('maxCardsHeld' in seat) || (seat.maxCardsHeld is int && seat.maxCardsHeld >= 0 && seat.maxCardsHeld <= 200)) &&
+        (!('caughtUnoCount' in seat) || (seat.caughtUnoCount is int && seat.caughtUnoCount >= 0 && seat.caughtUnoCount <= 99));
+    }
+
+    // Helper for houseRules map inside statePayload
+    function isValidHouseRules(rules) {
+      return rules is map &&
+        rules.keys().hasAll(['stackDrawCards', 'allowPlayDrawnCard', 'zeroRotatesHands']) &&
+        rules.keys().hasOnly([
+          'stackDrawCards',
+          'allowPlayDrawnCard',
+          'zeroRotatesHands',
+          'sevenSwapHands',
+          'jumpInRule',
+          'chaosDeck',
+          'mercyElimination',
+          'bluffChallengeWild4',
+          'comboSameNumber',
+          'teamMode2v2',
+          'turnTimerSeconds',
+          'targetScore'
+        ]) &&
+        rules.stackDrawCards is bool &&
+        rules.allowPlayDrawnCard is bool &&
+        rules.zeroRotatesHands is bool &&
+        (!('sevenSwapHands' in rules) || rules.sevenSwapHands is bool) &&
+        (!('jumpInRule' in rules) || rules.jumpInRule is bool) &&
+        (!('chaosDeck' in rules) || rules.chaosDeck is bool) &&
+        (!('mercyElimination' in rules) || rules.mercyElimination is bool) &&
+        (!('bluffChallengeWild4' in rules) || rules.bluffChallengeWild4 is bool) &&
+        (!('comboSameNumber' in rules) || rules.comboSameNumber is bool) &&
+        (!('teamMode2v2' in rules) || rules.teamMode2v2 is bool) &&
+        (!('turnTimerSeconds' in rules) || (rules.turnTimerSeconds is int && rules.turnTimerSeconds >= 0 && rules.turnTimerSeconds <= 60)) &&
+        (!('targetScore' in rules) || (rules.targetScore is int && rules.targetScore >= 0 && rules.targetScore <= 2000));
+    }
+
+    // Helper for statePayload map inside GameRoom
+    function isValidStatePayload(state) {
+      return state is map &&
+        state.keys().hasAll([
+          'phase',
+          'activeColor',
+          'direction',
+          'currentTurnIndex',
+          'pendingDraw',
+          'drawnPlayableCardId',
+          'houseRules',
+          'winnerId',
+          'winnerName',
+          'lastActionText',
+          'seats',
+          'drawDeckCodes',
+          'discardPileCodes'
+        ]) &&
+        state.keys().hasOnly([
+          'phase',
+          'activeColor',
+          'direction',
+          'currentTurnIndex',
+          'pendingDraw',
+          'drawnPlayableCardId',
+          'houseRules',
+          'winnerId',
+          'winnerName',
+          'lastActionText',
+          'seats',
+          'drawDeckCodes',
+          'discardPileCodes',
+          'darkSide',
+          'stakesMultiplier',
+          'lastDoublerId',
+          'winningTeamId',
+          'challengeAttackerId',
+          'challengeAttackerName',
+          'challengeVictimId',
+          'challengePrevColor',
+          'challengeWasBluffing'
+        ]) &&
+        state.phase is string && state.phase.size() <= 20 &&
+        state.phase in ['lobby', 'playing', 'paused', 'round_over'] &&
+        state.activeColor is string && state.activeColor.size() <= 16 &&
+        state.activeColor in ['red', 'blue', 'yellow', 'green'] &&
+        state.direction is int && (state.direction == 1 || state.direction == -1) &&
+        state.currentTurnIndex is int && state.currentTurnIndex >= 0 && state.currentTurnIndex < 6 &&
+        state.pendingDraw is int && state.pendingDraw >= 0 && state.pendingDraw <= 60 &&
+        state.drawnPlayableCardId is string && state.drawnPlayableCardId.size() <= 24 &&
+        isValidHouseRules(state.houseRules) &&
+        state.winnerId is string && state.winnerId.size() <= 128 &&
+        state.winnerName is string && state.winnerName.size() <= 40 &&
+        state.lastActionText is string && state.lastActionText.size() <= 160 &&
+        (!('darkSide' in state) || state.darkSide is bool) &&
+        (!('stakesMultiplier' in state) || (state.stakesMultiplier is int && state.stakesMultiplier >= 1 && state.stakesMultiplier <= 16)) &&
+        (!('lastDoublerId' in state) || (state.lastDoublerId is string && state.lastDoublerId.size() <= 128)) &&
+        (!('winningTeamId' in state) || (state.winningTeamId is string && state.winningTeamId.size() <= 4)) &&
+        (!('challengeAttackerId' in state) || (state.challengeAttackerId is string && state.challengeAttackerId.size() <= 128)) &&
+        (!('challengeAttackerName' in state) || (state.challengeAttackerName is string && state.challengeAttackerName.size() <= 40)) &&
+        (!('challengeVictimId' in state) || (state.challengeVictimId is string && state.challengeVictimId.size() <= 128)) &&
+        (!('challengePrevColor' in state) || (state.challengePrevColor is string && state.challengePrevColor.size() <= 16)) &&
+        (!('challengeWasBluffing' in state) || state.challengeWasBluffing is bool) &&
+        state.seats is list && state.seats.size() >= 1 && state.seats.size() <= 6 &&
+        isValidSeatSample(state.seats[0]) &&
+        state.drawDeckCodes is list && state.drawDeckCodes.size() <= 140 &&
+        (state.drawDeckCodes.size() == 0 || (state.drawDeckCodes[0] is string && state.drawDeckCodes[0].size() <= 24)) &&
+        state.discardPileCodes is list && state.discardPileCodes.size() <= 140 &&
+        (state.discardPileCodes.size() == 0 || (state.discardPileCodes[0] is string && state.discardPileCodes[0].size() <= 24));
+    }
+
+    // Validation Blueprint: GameRoom
+    function isValidGameRoom(data, roomId) {
+      return data.keys().hasAll([
+          'code',
+          'roomName',
+          'hostId',
+          'hostName',
+          'status',
+          'pausedBy',
+          'pausedByName',
+          'maxPlayers',
+          'playerIds',
+          'roundNumber',
+          'statePayload',
+          'lastTaunt',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'code',
+          'roomName',
+          'hostId',
+          'hostName',
+          'status',
+          'pausedBy',
+          'pausedByName',
+          'maxPlayers',
+          'playerIds',
+          'roundNumber',
+          'statePayload',
+          'lastTaunt',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        isValidRoomCode(data.code) && data.code == roomId &&
+        data.roomName is string && data.roomName.size() >= 1 && data.roomName.size() <= 50 &&
+        isValidId(data.hostId) &&
+        data.hostName is string && data.hostName.size() >= 1 && data.hostName.size() <= 40 &&
+        data.status is string && data.status.size() <= 16 &&
+        data.status in ['waiting', 'playing', 'paused', 'archived'] &&
+        data.pausedBy is string && data.pausedBy.size() <= 128 &&
+        data.pausedByName is string && data.pausedByName.size() <= 40 &&
+        data.maxPlayers is int && data.maxPlayers >= 2 && data.maxPlayers <= 6 &&
+        data.playerIds is list && data.playerIds.size() >= 1 && data.playerIds.size() <= 6 &&
+        data.playerIds.size() <= data.maxPlayers &&
+        data.playerIds[0] is string && data.playerIds[0].size() >= 1 && data.playerIds[0].size() <= 128 &&
+        data.roundNumber is int && data.roundNumber >= 1 && data.roundNumber <= 9999 &&
+        isValidStatePayload(data.statePayload) &&
+        isValidLastTaunt(data.lastTaunt) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    // Validation Blueprint: RoomMember
+    function isValidRoomMember(data, roomId, memberId) {
+      return data.keys().hasAll(['roomId', 'uid', 'displayName', 'avatarColor', 'role', 'joinedAt']) &&
+        data.keys().hasOnly(['roomId', 'uid', 'displayName', 'avatarColor', 'role', 'joinedAt']) &&
+        isValidRoomCode(data.roomId) && data.roomId == roomId &&
+        isValidId(data.uid) && data.uid == memberId && data.uid == request.auth.uid &&
+        data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 40 &&
+        isValidAvatarColor(data.avatarColor) &&
+        data.role is string && data.role.size() <= 16 && data.role in ['host', 'player'] &&
+        data.joinedAt is timestamp;
+    }
+
+    // Validation Blueprint: ChatMessage
+    function isValidChatMessage(data, roomId) {
+      return data.keys().hasAll([
+          'roomId',
+          'senderId',
+          'senderName',
+          'kind',
+          'text',
+          'stickerId',
+          'targetName',
+          'visibleToUids',
+          'createdAtMs',
+          'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'roomId',
+          'senderId',
+          'senderName',
+          'kind',
+          'text',
+          'stickerId',
+          'targetName',
+          'customTitle',
+          'customBadge',
+          'customColor',
+          'customArt',
+          'rarity',
+          'soundKind',
+          'visibleToUids',
+          'createdAtMs',
+          'createdAt'
+        ]) &&
+        isValidRoomCode(data.roomId) && data.roomId == roomId &&
+        isValidId(data.senderId) && data.senderId == request.auth.uid &&
+        data.senderName is string && data.senderName.size() >= 1 && data.senderName.size() <= 40 &&
+        data.kind is string && data.kind.size() <= 16 && data.kind in ['text', 'sticker', 'system'] &&
+        data.text is string && data.text.size() >= 1 && data.text.size() <= 280 &&
+        data.stickerId is string && data.stickerId.size() <= 40 &&
+        data.targetName is string && data.targetName.size() <= 40 &&
+        (!('customTitle' in data) || (data.customTitle is string && data.customTitle.size() <= 32)) &&
+        (!('customBadge' in data) || (data.customBadge is string && data.customBadge.size() <= 8)) &&
+        (!('customColor' in data) || (data.customColor is string && data.customColor.size() <= 12)) &&
+        (!('customArt' in data) || (data.customArt is string && data.customArt.size() <= 24)) &&
+        (!('rarity' in data) || (data.rarity is string && data.rarity.size() <= 16 && data.rarity in ['common', 'rare', 'epic', 'legendary'])) &&
+        (!('soundKind' in data) || (data.soundKind is string && data.soundKind.size() <= 16)) &&
+        data.visibleToUids is list && data.visibleToUids.size() >= 1 && data.visibleToUids.size() <= 6 &&
+        data.visibleToUids[0] is string && data.visibleToUids[0].size() <= 128 &&
+        request.auth.uid in data.visibleToUids &&
+        data.createdAtMs is int && data.createdAtMs >= 0 &&
+        data.createdAt is timestamp;
+    }
+
+    // Public non-PII profiles
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId);
+      allow list: if false;
+
+      allow create: if isVerified() &&
+        isOwner(userId) &&
+        isValidId(userId) &&
+        isValidUserPublicProfile(incoming(), userId) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isVerified() &&
+        isOwner(userId) &&
+        isValidId(userId) &&
+        isValidUserPublicProfile(incoming(), userId) &&
+        incoming().uid == existing().uid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'avatarColor', 'updatedAt']);
+
+      allow delete: if false;
+
+      // Isolated owner-only PII subcollection
+      match /private/{infoId} {
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(infoId);
+        allow list: if false;
+
+        allow create: if isVerified() &&
+          isOwner(userId) &&
+          isValidId(userId) &&
+          isValidId(infoId) &&
+          isValidUserPrivateInfo(incoming(), userId) &&
+          incoming().updatedAt == request.time;
+
+        allow update: if isVerified() &&
+          isOwner(userId) &&
+          isValidId(userId) &&
+          isValidId(infoId) &&
+          isValidUserPrivateInfo(incoming(), userId) &&
+          incoming().uid == existing().uid &&
+          incoming().updatedAt == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['email', 'updatedAt']);
+
+        allow delete: if false;
+      }
+    }
+
+    // Multiplayer UNO Rooms
+    match /rooms/{roomId} {
+      allow get: if isSignedIn() &&
+        isValidRoomCode(roomId) &&
+        (request.auth.uid in existing().playerIds || existing().status in ['waiting', 'playing', 'paused']);
+
+      // Query Enforcer: Zero blanket reads, zero get() inside list
+      allow list: if isSignedIn() &&
+        request.auth.uid in existing().playerIds;
+
+      allow create: if isVerified() &&
+        isValidRoomCode(roomId) &&
+        isValidGameRoom(incoming(), roomId) &&
+        incoming().hostId == request.auth.uid &&
+        incoming().playerIds.size() == 1 &&
+        incoming().playerIds[0] == request.auth.uid &&
+        incoming().status in ['waiting', 'playing'] &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        existsAfter(/databases/$(database)/documents/rooms/$(roomId)/members/$(request.auth.uid));
+
+      allow update: if isVerified() &&
+        isValidRoomCode(roomId) &&
+        isValidGameRoom(incoming(), roomId) &&
+        existing().status != 'archived' &&
+        incoming().code == existing().code &&
+        incoming().hostId == existing().hostId &&
+        incoming().hostName == existing().hostName &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          // Action 1: Join Room (new player atomically adds membership + joins seat)
+          (
+            !(request.auth.uid in existing().playerIds) &&
+            request.auth.uid in incoming().playerIds &&
+            existing().status in ['waiting', 'paused', 'playing'] &&
+            incoming().playerIds.size() == existing().playerIds.size() + 1 &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['playerIds', 'statePayload', 'updatedAt']) &&
+            existsAfter(/databases/$(database)/documents/rooms/$(roomId)/members/$(request.auth.uid))
+          ) ||
+          // Action 2: Gameplay Move / Bot Turn / Next Round
+          (
+            request.auth.uid in existing().playerIds &&
+            incoming().playerIds == existing().playerIds &&
+            incoming().status in ['waiting', 'playing'] &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'status',
+              'pausedBy',
+              'pausedByName',
+              'roundNumber',
+              'statePayload',
+              'lastTaunt',
+              'updatedAt'
+            ]) &&
+            exists(/databases/$(database)/documents/rooms/$(roomId)/members/$(request.auth.uid))
+          ) ||
+          // Action 3: Pause or Resume Match
+          (
+            request.auth.uid in existing().playerIds &&
+            incoming().playerIds == existing().playerIds &&
+            incoming().status in ['paused', 'playing'] &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'status',
+              'pausedBy',
+              'pausedByName',
+              'statePayload',
+              'updatedAt'
+            ]) &&
+            exists(/databases/$(database)/documents/rooms/$(roomId)/members/$(request.auth.uid))
+          ) ||
+          // Action 4: Live Taunt / Sticker Reaction on Table
+          (
+            request.auth.uid in existing().playerIds &&
+            incoming().playerIds == existing().playerIds &&
+            incoming().lastTaunt.senderId == request.auth.uid &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['lastTaunt', 'updatedAt']) &&
+            exists(/databases/$(database)/documents/rooms/$(roomId)/members/$(request.auth.uid))
+          ) ||
+          // Action 5: Host Room Settings or Terminal Archive
+          (
+            existing().hostId == request.auth.uid &&
+            incoming().playerIds == existing().playerIds &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'roomName',
+              'maxPlayers',
+              'status',
+              'pausedBy',
+              'pausedByName',
+              'statePayload',
+              'updatedAt'
+            ]) &&
+            exists(/databases/$(database)/documents/rooms/$(roomId)/members/$(request.auth.uid))
+          )
+        );
+
+      allow delete: if false;
+
+      // Subcollection: Relational Room Members (Master Gate)
+      match /members/{memberId} {
+        allow get: if isSignedIn() &&
+          isValidRoomCode(roomId) &&
+          isValidId(memberId) &&
+          exists(/databases/$(database)/documents/rooms/$(roomId)/members/$(request.auth.uid));
+
+        allow list: if false;
+
+        allow create: if isVerified() &&
+          isOwner(memberId) &&
+          isValidRoomCode(roomId) &&
+          isValidId(memberId) &&
+          isValidRoomMember(incoming(), roomId, memberId) &&
+          incoming().joinedAt == request.time &&
+          getAfter(/databases/$(database)/documents/rooms/$(roomId)).data.status != 'archived' &&
+          request.auth.uid in getAfter(/databases/$(database)/documents/rooms/$(roomId)).data.playerIds &&
+          (
+            (incoming().role == 'host' && getAfter(/databases/$(database)/documents/rooms/$(roomId)).data.hostId == request.auth.uid) ||
+            (incoming().role == 'player' && getAfter(/databases/$(database)/documents/rooms/$(roomId)).data.hostId != request.auth.uid)
+          );
+
+        allow update, delete: if false;
+      }
+
+      // Subcollection: Persistent Real-Time Chat & Zueira Stickers (Master Gate + Query Enforcer)
+      match /messages/{messageId} {
+        allow get: if isSignedIn() &&
+          isValidRoomCode(roomId) &&
+          isValidId(messageId) &&
+          exists(/databases/$(database)/documents/rooms/$(roomId)/members/$(request.auth.uid));
+
+        // Query Enforcer without O(n) get()
+        allow list: if isSignedIn() &&
+          request.auth.uid in existing().visibleToUids;
+
+        allow create: if isVerified() &&
+          isValidRoomCode(roomId) &&
+          isValidId(messageId) &&
+          isValidChatMessage(incoming(), roomId) &&
+          incoming().createdAt == request.time &&
+          exists(/databases/$(database)/documents/rooms/$(roomId)/members/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/rooms/$(roomId)).data.status != 'archived' &&
+          request.auth.uid in get(/databases/$(database)/documents/rooms/$(roomId)).data.playerIds;
+
+        allow update, delete: if false;
+      }
+    }
+  }
+}

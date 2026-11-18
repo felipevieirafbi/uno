@@ -1,0 +1,206 @@
+@import "tailwindcss";
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background-color: #072818;
+    color: #fffdf9;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+}
+
+.font-display {
+  font-family: 'Fredoka', 'Plus Jakarta Sans', sans-serif;
+}
+
+.font-mono-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes tauntCardSlam {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -44%) scale(0.45) rotate(-10deg);
+  }
+  12% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.08) rotate(3deg);
+  }
+  22% {
+    transform: translate(-50%, -50%) scale(1) rotate(-1.5deg);
+  }
+  84% {
+    opacity: 1;
+    transform: translate(-50%, -52%) scale(1) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -62%) scale(0.88);
+  }
+}
+
+.animate-taunt-slam {
+  animation: tauntCardSlam 3.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes holoSweep {
+  0% {
+    transform: translateX(-130%) skewX(-22deg);
+  }
+  55%,
+  100% {
+    transform: translateX(230%) skewX(-22deg);
+  }
+}
+
+.animate-holo-sweep {
+  animation: holoSweep 2.8s ease-in-out infinite;
+}
+
+@keyframes tableShake {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  20% {
+    transform: translate3d(-5px, 3px, 0);
+  }
+  40% {
+    transform: translate3d(5px, -3px, 0);
+  }
+  60% {
+    transform: translate3d(-3px, 2px, 0);
+  }
+  80% {
+    transform: translate3d(3px, -1px, 0);
+  }
+}
+
+.animate-table-shake {
+  animation: tableShake 0.28s ease-out;
+}
+
+@keyframes cardFlyToCenter {
+  0% {
+    opacity: 0.25;
+    transform: translate3d(var(--fly-x, 0px), var(--fly-y, 180px), 0) scale(0.58)
+      rotate(var(--fly-rot, -14deg));
+  }
+  68% {
+    opacity: 1;
+    transform: translate3d(0px, -6px, 0) scale(1.08) rotate(2deg);
+  }
+  86% {
+    opacity: 1;
+    transform: translate3d(0px, 0px, 0) scale(1) rotate(-1deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(0px, 0px, 0) scale(0.98) rotate(0deg);
+  }
+}
+
+.animate-card-fly-in {
+  animation: cardFlyToCenter 0.62s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes cardFlyToSeat {
+  0% {
+    opacity: 0;
+    transform: translate3d(-34px, 0px, 0) scale(0.72) rotate(-10deg);
+  }
+  20% {
+    opacity: 1;
+    transform: translate3d(-18px, -10px, 0) scale(0.92) rotate(-4deg);
+  }
+  85% {
+    opacity: 0.95;
+    transform: translate3d(var(--fly-x, 0px), var(--fly-y, 180px), 0) scale(0.55)
+      rotate(var(--fly-rot, 12deg));
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--fly-x, 0px), var(--fly-y, 180px), 0) scale(0.4)
+      rotate(var(--fly-rot, 16deg));
+  }
+}
+
+.animate-card-fly-out {
+  animation: cardFlyToSeat 0.68s cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
+}
+
+@keyframes impactCalloutPop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 10px) scale(0.68);
+  }
+  16% {
+    opacity: 1;
+    transform: translate(-50%, -4px) scale(1.06);
+  }
+  28% {
+    opacity: 1;
+    transform: translate(-50%, 0px) scale(1);
+  }
+  82% {
+    opacity: 1;
+    transform: translate(-50%, -4px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -16px) scale(0.94);
+  }
+}
+
+.animate-impact-callout {
+  animation: impactCalloutPop 1.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes spinOrbitCw {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes spinOrbitCcw {
+  from {
+    transform: rotate(360deg);
+  }
+  to {
+    transform: rotate(0deg);
+  }
+}
+
+.animate-orbit-cw {
+  animation: spinOrbitCw 22s linear infinite;
+}
+
+.animate-orbit-ccw {
+  animation: spinOrbitCcw 22s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-taunt-slam,
+  .animate-holo-sweep,
+  .animate-table-shake,
+  .animate-card-fly-in,
+  .animate-card-fly-out,
+  .animate-impact-callout,
+  .animate-orbit-cw,
+  .animate-orbit-ccw {
+    animation: none;
+  }
+}
+

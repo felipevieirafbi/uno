@@ -1,0 +1,6 @@
+{
+  "name": "UnoZueira",
+  "description": "Jogue UNO em tempo real com amigos ou IA, troque mensagens com histórico salvo, mande figurinhas na mesa e pause partidas para continuar depois.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

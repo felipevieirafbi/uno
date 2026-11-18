@@ -1,0 +1,335 @@
+{
+  "entities": {
+    "UserPublicProfile": {
+      "title": "UserPublicProfile",
+      "description": "Public player profile containing non-PII display attributes for game tables.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Authenticated Firebase UID of the player.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Display nickname shown on the card table and chat.",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "avatarColor": {
+          "type": "string",
+          "description": "Chosen avatar accent color.",
+          "enum": ["red", "blue", "yellow", "green", "purple", "orange"],
+          "maxLength": 16
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server last update timestamp."
+        }
+      },
+      "required": ["uid", "displayName", "avatarColor", "createdAt", "updatedAt"]
+    },
+    "UserPrivateInfo": {
+      "title": "UserPrivateInfo",
+      "description": "Strictly isolated owner-only PII record.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Owner Firebase UID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Verified account email address.",
+          "minLength": 3,
+          "maxLength": 254
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": ["uid", "email", "updatedAt"]
+    },
+    "GameRoom": {
+      "title": "GameRoom",
+      "description": "Real-time multiplayer UNO game room supporting pause/resume, 2-6 players, and AI bots.",
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "6-character uppercase room code matching document ID.",
+          "minLength": 6,
+          "maxLength": 6,
+          "pattern": "^[A-Z0-9]{6}$"
+        },
+        "roomName": {
+          "type": "string",
+          "description": "Friendly name of the table.",
+          "minLength": 1,
+          "maxLength": 50
+        },
+        "hostId": {
+          "type": "string",
+          "description": "Immutable Firebase UID of the room creator.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "hostName": {
+          "type": "string",
+          "description": "Immutable display name of the room creator.",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "status": {
+          "type": "string",
+          "description": "Lifecycle status of the room; archived is terminal.",
+          "enum": ["waiting", "playing", "paused", "archived"],
+          "maxLength": 16
+        },
+        "pausedBy": {
+          "type": "string",
+          "description": "UID of player who paused the game, or empty string when active.",
+          "maxLength": 128
+        },
+        "pausedByName": {
+          "type": "string",
+          "description": "Name of player who paused the game, or empty string when active.",
+          "maxLength": 40
+        },
+        "maxPlayers": {
+          "type": "integer",
+          "description": "Maximum seats at the table (2 to 6)."
+        },
+        "playerIds": {
+          "type": "array",
+          "description": "Bounded list (max 6) of authenticated human player UIDs in this room."
+        },
+        "roundNumber": {
+          "type": "integer",
+          "description": "Current round counter."
+        },
+        "statePayload": {
+          "type": "object",
+          "description": "Native map containing active UNO/Chaos deck, discard pile, seats (with 2v2 teamId, Mercy elimination, and round award stats), turn index, pendingDraw stack, drawnPlayableCardId, houseRules (including optional targetScore tournament goal), darkSide flag, stakesMultiplier, Wild +4 bluff challenge state, and scores."
+        },
+        "lastTaunt": {
+          "type": "object",
+          "description": "Latest live Zueira sticker reaction shown over the card table."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Immutable server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": [
+        "code",
+        "roomName",
+        "hostId",
+        "hostName",
+        "status",
+        "pausedBy",
+        "pausedByName",
+        "maxPlayers",
+        "playerIds",
+        "roundNumber",
+        "statePayload",
+        "lastTaunt",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "RoomMember": {
+      "title": "RoomMember",
+      "description": "Relational membership document under a GameRoom for Master Gate enforcement.",
+      "type": "object",
+      "properties": {
+        "roomId": {
+          "type": "string",
+          "description": "Parent 6-character room ID.",
+          "minLength": 6,
+          "maxLength": 6,
+          "pattern": "^[A-Z0-9]{6}$"
+        },
+        "uid": {
+          "type": "string",
+          "description": "Member Firebase UID matching memberId.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Member display name.",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "avatarColor": {
+          "type": "string",
+          "description": "Member avatar color.",
+          "enum": ["red", "blue", "yellow", "green", "purple", "orange"],
+          "maxLength": 16
+        },
+        "role": {
+          "type": "string",
+          "description": "Role inside the room.",
+          "enum": ["host", "player"],
+          "maxLength": 16
+        },
+        "joinedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Immutable server join timestamp."
+        }
+      },
+      "required": ["roomId", "uid", "displayName", "avatarColor", "role", "joinedAt"]
+    },
+    "ChatMessage": {
+      "title": "ChatMessage",
+      "description": "Persistent real-time chat message or Zueira sticker sent inside a GameRoom.",
+      "type": "object",
+      "properties": {
+        "roomId": {
+          "type": "string",
+          "description": "Parent room code.",
+          "minLength": 6,
+          "maxLength": 6,
+          "pattern": "^[A-Z0-9]{6}$"
+        },
+        "senderId": {
+          "type": "string",
+          "description": "Firebase UID of the message author.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "senderName": {
+          "type": "string",
+          "description": "Display name of the message author.",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "kind": {
+          "type": "string",
+          "description": "Message category: text message, taunt sticker, or system event.",
+          "enum": ["text", "sticker", "system"],
+          "maxLength": 16
+        },
+        "text": {
+          "type": "string",
+          "description": "Message body or sticker caption.",
+          "minLength": 1,
+          "maxLength": 280
+        },
+        "stickerId": {
+          "type": "string",
+          "description": "Sticker identifier or empty string for text messages.",
+          "maxLength": 40
+        },
+        "targetName": {
+          "type": "string",
+          "description": "Optional target player nickname for Zueira stickers, or empty string.",
+          "maxLength": 40
+        },
+        "customTitle": {
+          "type": "string",
+          "description": "Optional custom or edited sticker title.",
+          "maxLength": 32
+        },
+        "customBadge": {
+          "type": "string",
+          "description": "Optional custom sticker badge text.",
+          "maxLength": 8
+        },
+        "customColor": {
+          "type": "string",
+          "description": "Optional hex color for custom sticker card.",
+          "maxLength": 12
+        },
+        "customArt": {
+          "type": "string",
+          "description": "Optional sticker artwork identifier.",
+          "maxLength": 24
+        },
+        "rarity": {
+          "type": "string",
+          "description": "Optional sticker rarity tier.",
+          "enum": ["common", "rare", "epic", "legendary"],
+          "maxLength": 16
+        },
+        "soundKind": {
+          "type": "string",
+          "description": "Optional synthesized sound effect identifier.",
+          "maxLength": 16
+        },
+        "visibleToUids": {
+          "type": "array",
+          "description": "Bounded array (max 6) of room member UIDs authorized to list this message without O(n) get() calls."
+        },
+        "createdAtMs": {
+          "type": "integer",
+          "description": "Client ordering epoch milliseconds paired with server createdAt timestamp."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Immutable server creation timestamp."
+        }
+      },
+      "required": [
+        "roomId",
+        "senderId",
+        "senderName",
+        "kind",
+        "text",
+        "stickerId",
+        "targetName",
+        "visibleToUids",
+        "createdAtMs",
+        "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserPublicProfile" },
+      "description": "Public non-PII display profiles for players."
+    },
+    "/users/{userId}/private/{infoId}": {
+      "schema": { "$ref": "#/entities/UserPrivateInfo" },
+      "description": "Owner-isolated private PII subcollection."
+    },
+    "/rooms/{roomId}": {
+      "schema": { "$ref": "#/entities/GameRoom" },
+      "description": "Active, waiting, paused, or archived multiplayer UNO rooms."
+    },
+    "/rooms/{roomId}/members/{memberId}": {
+      "schema": { "$ref": "#/entities/RoomMember" },
+      "description": "Relational membership registry for each GameRoom."
+    },
+    "/rooms/{roomId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/ChatMessage" },
+      "description": "Persistent real-time chat and Zueira sticker history for each GameRoom."
+    }
+  }
+}

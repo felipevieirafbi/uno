@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#072818" />
+  <rect x="24" y="24" width="464" height="464" rx="92" fill="#0B3B24" stroke="#F59E0B" stroke-width="10" stroke-opacity="0.35" />
+  <g transform="translate(256 268)">
+    <g transform="rotate(-20) translate(-70 -10)">
+      <rect x="-64" y="-96" width="128" height="192" rx="22" fill="#FFFDF9" stroke="#18181B" stroke-width="6" />
+      <rect x="-52" y="-84" width="104" height="168" rx="14" fill="#0284C7" />
+      <ellipse cx="0" cy="0" rx="42" ry="64" transform="rotate(24)" fill="#FFFDF9" />
+      <text x="0" y="18" text-anchor="middle" font-family="sans-serif" font-weight="900" font-size="56" fill="#0284C7">+2</text>
+    </g>
+    <g transform="rotate(0) translate(0 -24)">
+      <rect x="-68" y="-102" width="136" height="204" rx="24" fill="#FFFDF9" stroke="#18181B" stroke-width="6" />
+      <rect x="-56" y="-90" width="112" height="180" rx="16" fill="#E11D48" />
+      <ellipse cx="0" cy="0" rx="44" ry="68" transform="rotate(24)" fill="#FACC15" />
+      <text x="0" y="22" text-anchor="middle" font-family="sans-serif" font-weight="900" font-size="66" fill="#18181B">U!</text>
+    </g>
+    <g transform="rotate(20) translate(70 -6)">
+      <rect x="-64" y="-96" width="128" height="192" rx="22" fill="#FFFDF9" stroke="#18181B" stroke-width="6" />
+      <rect x="-52" y="-84" width="104" height="168" rx="14" fill="#16A34A" />
+      <ellipse cx="0" cy="0" rx="42" ry="64" transform="rotate(24)" fill="#FFFDF9" />
+      <text x="0" y="18" text-anchor="middle" font-family="sans-serif" font-weight="900" font-size="54" fill="#16A34A">+4</text>
+    </g>
+  </g>
+</svg>
